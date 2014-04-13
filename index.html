@@ -35,11 +35,11 @@
 </head>
 <body>
 	<div id="answer"></div>
-	<div id="info" style="position: absolute; bottom: 20; right: 20;">
+	<div id="info" style="position: absolute; bottom: 20; right: 20; text-align: right;">
 		Powered by <a href="https://www.leapmotion.com/">Leap Motion.</a> <br />
 		Made for LA Hacks 2014. <br />
 		<a href="#" onclick="toggle_visibility('leapdata');">Toggle technical details.</a></div>
-	<div id="leapdata" style="position: absolute; bottom: 20; left: 20; display: none;">
+	<div id="leapdata" style="position: absolute; bottom: 20; left: 20; display: none; text-align: left;">
 		<script>
 			function unitV(vector) {
 				return numeric.div(vector,vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
