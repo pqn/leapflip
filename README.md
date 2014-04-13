@@ -17,3 +17,7 @@ Created for LA Hacks 2014.
 ##Inspired By
 
 * https://isitchristmas.com
+
+##Uses
+
+* http://www.numericjs.com
