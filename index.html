@@ -1,1 +1,173 @@
-Hello World
+<html>
+<head>
+	<meta name="viewport" content="initial-scale=1, maximum-scale=1">
+	<title>
+		Am I Flipping Off My Computer?
+	</title>
+	<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+	<script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+	<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+	<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+	<script src="http://js.leapmotion.com/leap-0.4.3.min.js"></script>
+	<script src="http://js.leapmotion.com/leap-plugins-0.1.3.js"></script>
+	<script src="./numeric-1.2.6.min.js"></script>
+	<script type="text/javascript">
+	    function toggle_visibility(id) {
+	       var e = document.getElementById(id);
+	       if(e.style.display == 'block')
+	          e.style.display = 'none';
+	       else
+	          e.style.display = 'block';
+	    }
+	</script>
+	<style type="text/css">
+	body {text-align: center;}
+		#answer {
+		display: inline-block;
+		margin-top: 200px;
+		font-weight: bold;
+		font-size: 120pt;
+		font-family: Arial, sans-serif;
+		text-decoration: none;
+		color: black;
+		}
+	</style>
+</head>
+<body>
+	<div id="answer"></div>
+	<div id="info" style="position: absolute; bottom: 20; right: 20;">
+		Powered by <a href="https://www.leapmotion.com/">Leap Motion.</a> <br />
+		Made for LA Hacks 2014. <br />
+		<a href="#" onclick="toggle_visibility('leapdata');">Toggle technical details.</a></div>
+	<div id="leapdata" style="position: absolute; bottom: 20; left: 20; display: none;">
+		<script>
+			function unitV(vector) {
+				return numeric.div(vector,vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+			}
+
+			function round(number) {
+				if (number instanceof Array)
+					return [Math.round(number[0]*1000)/1000, Math.round(number[1]*1000)/1000, Math.round(number[2]*1000)/1000];
+				return Math.round(number * 1000) / 1000;
+			}
+
+			function truthCount(someArray) {
+				var counter = 0;
+				for (var i = 0; i < someArray.length; i++) {
+					if (someArray[i]!==false) {
+						counter++;
+					}
+				}
+				return counter;
+			}
+
+			function crossProduct(a, b) {
+				return [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
+			}
+
+			function guesses(array, signs) {
+				var max = -1;
+				var maxIndex = -1;
+				var min = 1;
+				var minIndex = -1;
+				var usedFingers = [false, false, false, false, false];
+				for (var i = 0; i < array.length; i++) {
+					if (array[i] > max) {
+						maxIndex = i;
+						max = array[i];
+					}
+					if (array[i] < min) {
+						minIndex = i;
+						min = array[i];
+					}
+				}
+				var guess = new Array(array.length);
+				if (max >= 0.016 + array.length/700 || array.length >= 4) { // middle finger trigger
+					guess[maxIndex] = "middle";
+					usedFingers[2] = maxIndex;
+				}
+				if (min < 0.02 || (min < 0.002 && array.length == 1) || array.length == 5) { // thumb trigger
+					guess[minIndex] = "thumb";
+					usedFingers[0] = minIndex;
+				}
+				if (usedFingers[0]!==false && usedFingers[2]!==false) {
+					for (var i = 0; i < array.length; i++) {
+						if (i != maxIndex && i != minIndex && array[i] > min && signs[i] == signs[minIndex]) { // make sure cross product sign matches the thumb
+							guess[i] = "index";
+							usedFingers[1] = i;
+							break;
+						}
+					}
+				}
+				var hierarchy = [1, 0, 2, 4, 3]; // priority list of fingers to fill in
+				var answers = ["index","thumb","middle","pinky","ring"]; // translation of hierarchy variable into text
+				for (var i = 0; i < hierarchy.length && truthCount(usedFingers) < array.length; i++) { // for every next finger to be assigned
+					if (usedFingers[hierarchy[i]]===false) { // if it has not yet been assigned (hierarchy[i] returns which finger)
+						var maxProd = -1; // let's find the maximum dot product
+						var maxIndex2 = -1; // what will it be!?!?!?
+						for (var j = 0; j < array.length; j++) { // for every finger observed (we don't know order) including already observed
+							if ($.inArray(j,usedFingers) < 0 && array[j] > maxProd) { // if index of finger not yet in usedFingers and it's larger than maxProd
+								maxProd = array[j];
+								maxIndex2 = j;
+							}
+						}
+						if (maxIndex2 != -1) { // if we found something only
+							usedFingers[hierarchy[i]] = j; //record the finger is now used
+							guess[j] = answers[i]; // 
+						}
+						break;
+					}
+				}
+				return guess;
+			}
+
+			$(function(){
+				var leapdata = document.getElementById('leapdata');
+				Leap.loop(function(frame){
+					leapdata.innerHTML = "";
+					var tempouter = [];
+					frame.hands.forEach(function(hand, index){
+						var storedStarts = [];
+						var storedSigns = [];
+						hand.fingers.forEach(function(finger, index2){
+							finger.startPosition = numeric.sub(finger.tipPosition, numeric.dot(finger.direction,finger.length));
+							var fingerPosVector = unitV(numeric.sub(finger.startPosition,hand.palmPosition));
+							var spdp = numeric.dot(fingerPosVector,hand.direction);
+							var crossP = crossProduct(fingerPosVector,hand.direction);
+							var sign = crossP?crossP<0?-1:1:0;
+							storedStarts.push(spdp);
+							storedSigns.push(sign);
+							leapdata.innerHTML = leapdata.innerHTML + "Hand " + index
+							+ ", finger " + index2
+							+ ", dot product " + round(numeric.dot(hand.direction,finger.direction))
+							+ ", start position " + round(finger.startPosition)
+							+ ", start position dot product " + round(spdp)
+							+ "<br />";
+						});
+						var temp = guesses(storedStarts, storedSigns);
+						tempouter.push(temp);
+						leapdata.innerHTML += temp.join(" ") + "<br /><br />";
+					});
+					if (tempouter.length == 0) {
+						document.getElementById("answer").innerHTML = "NO";
+					} else {
+						var finalcounter = 0;
+							tempouter.forEach(function(thing,thingy){
+							if (thing.length == 1 && thing[0]=="middle") {
+								finalcounter++;
+							}
+						});
+						if (finalcounter == 0) {
+							document.getElementById("answer").innerHTML = "NO";
+						} else if (finalcounter == 1) {
+							document.getElementById("answer").innerHTML = "YES";
+						} else if (finalcounter == 2) {
+							document.getElementById("answer").innerHTML = "DOUBLE YES";
+						}
+					}
+				});
+			});
+		</script>
+	</div>
+</body>
+</html>
